@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barbería Online PRO</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:#111;color:#fff}
+header{text-align:center;padding:20px;background:#000}
+button{padding:10px;background:#c59d5f;border:none;color:#fff;cursor:pointer}
+.container{padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}
+.card{background:#222;padding:15px;border-radius:10px;text-align:center}
+.card img{width:100%;height:200px;object-fit:cover}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;display:none;background:rgba(0,0,0,0.8);justify-content:center;align-items:center}
+.modal-content{background:#222;padding:20px}
+input,select{width:100%;padding:8px;margin:5px}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Mi Barbería</h1>
+<p>Agenda tu cita online</p>
+</header>
+
+<div class="container">
+<h2>Subir corte (Admin)</h2>
+<input type="text" id="nombre" placeholder="Nombre">
+<input type="number" id="precio" placeholder="Precio">
+<input type="text" id="desc" maxlength="100" placeholder="Descripción">
+<input type="file" id="img">
+<button onclick="subirCorte()">Subir corte</button>
+</div>
+
+<div class="container">
+<h2>Cortes</h2>
+<div class="grid" id="lista"></div>
+</div>
+
+<div class="modal" id="modal">
+<div class="modal-content">
+<h3>Agendar cita</h3>
+<p id="info"></p>
+<input type="date" id="fecha" onchange="cargarHoras()">
+<select id="hora"></select>
+<select id="barbero">
+<option>Camila</option>
+<option>Randall</option>
+<option>Luis</option>
+</select>
+<button onclick="guardarCita()">Confirmar</button>
+<button onclick="cerrar()">Cerrar</button>
+</div>
+</div>
+
+<script>
+// 🔴 CONFIGURA ESTO DESDE FIREBASE
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_DOMINIO",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_BUCKET",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let corteActual=null;
+let horasBase=["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00"];
+
+async function subirCorte(){
+let file = img.files[0];
+let ref = storage.ref('cortes/'+file.name);
+await ref.put(file);
+let url = await ref.getDownloadURL();
+
+await db.collection('cortes').add({
+nombre:nombre.value,
+precio:precio.value,
+desc:desc.value,
+img:url
+});
+alert('Subido');
+}
+
+function cargar(){
+db.collection('cortes').onSnapshot(snap=>{
+let html='';
+snap.forEach(doc=>{
+let c=doc.data();
+html+=`<div class="card">
+<img src="${c.img}">
+<h3>${c.nombre}</h3>
+<p>$${c.precio}</p>
+<p>${c.desc}</p>
+<button onclick="abrir('${c.nombre}',${c.precio})">Agendar</button>
+</div>`;
+});
+lista.innerHTML=html;
+});
+}
+
+function abrir(nombre,precio){
+corteActual={nombre,precio};
+modal.style.display='flex';
+info.innerText=nombre+' $'+precio;
+}
+
+function cerrar(){modal.style.display='none';}
+
+async function cargarHoras(){
+let fechaSel = fecha.value;
+let ocupadas=[];
+
+let snap = await db.collection('citas').where('fecha','==',fechaSel).get();
+snap.forEach(doc=>ocupadas.push(doc.data().hora));
+
+hora.innerHTML='';
+horasBase.forEach(h=>{
+if(!ocupadas.includes(h)){
+hora.innerHTML += `<option value="${h}">${h}</option>`;
+}
+});
+}
+
+async function guardarCita(){
+let f=fecha.value;
+let h=hora.value;
+
+let snap = await db.collection('citas')
+.where('fecha','==',f)
+.where('hora','==',h)
+.get();
+
+if(!snap.empty){
+alert('Hora ocupada');
+return;
+}
+
+let cita={
+corte:corteActual.nombre,
+precio:corteActual.precio,
+fecha:f,
+hora:h,
+barbero:barbero.value
+};
+
+await db.collection('citas').add(cita);
+
+let mensaje=`Hola, quiero ${cita.corte} el ${f} a las ${h}`;
+window.open(`https://wa.me/TUNUMERO?text=${encodeURIComponent(mensaje)}`);
+
+alert('Cita reservada');
+cerrar();
+}
+
+cargar();
+</script>
+
+</body>
+</html>
