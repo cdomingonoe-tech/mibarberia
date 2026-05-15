@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barbería Pro</title>
+<style>
+body{font-family:Arial;margin:0;background:#111;color:#fff}
+header{padding:20px;text-align:center;background:#000}
+button{padding:10px 15px;border:none;background:#c59d5f;color:#fff;cursor:pointer}
+.container{padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}
+.card{background:#222;padding:15px;border-radius:10px;text-align:center}
+.card img{width:100%;height:200px;object-fit:cover;border-radius:10px}
+.precio{color:#c59d5f;font-weight:bold}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:none;justify-content:center;align-items:center}
+.modal-content{background:#222;padding:20px;border-radius:10px}
+input,select{padding:8px;margin:5px;width:100%}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Mi Barbería</h1>
+<p>Elige tu estilo y agenda tu cita</p>
+<button onclick="mostrarCortes()">Ver cortes</button>
+</header>
+
+<div class="container" id="galeria" style="display:none">
+<h2>Cortes disponibles</h2>
+<div class="grid" id="listaCortes"></div>
+</div>
+
+<div class="modal" id="modal">
+<div class="modal-content">
+<h3>Agendar cita</h3>
+<p id="corteSeleccionado"></p>
+<input type="date" id="fecha">
+<input type="time" id="hora">
+<select id="barbero">
+<option>Camila</option>
+<option>Randall</option>
+<option>Luis</option>
+</select>
+<button onclick="guardarCita()">Confirmar</button>
+<button onclick="cerrarModal()">Cerrar</button>
+</div>
+</div>
+
+<div class="container">
+<h2>Panel Admin (Subir cortes)</h2>
+<input type="text" id="nombre" placeholder="Nombre del corte">
+<input type="number" id="precio" placeholder="Precio">
+<input type="text" id="desc" maxlength="100" placeholder="Descripción (100 letras)">
+<input type="text" id="img" placeholder="URL de imagen">
+<button onclick="agregarCorte()">Agregar corte</button>
+</div>
+
+<script>
+let cortes = JSON.parse(localStorage.getItem('cortes')) || [];
+let citas = JSON.parse(localStorage.getItem('citas')) || [];
+let corteActual = null;
+
+function mostrarCortes(){
+document.getElementById('galeria').style.display='block';
+render();
+}
+
+function agregarCorte(){
+let corte={
+nombre:document.getElementById('nombre').value,
+precio:document.getElementById('precio').value,
+desc:document.getElementById('desc').value,
+img:document.getElementById('img').value
+};
+cortes.push(corte);
+localStorage.setItem('cortes',JSON.stringify(cortes));
+render();
+}
+
+function render(){
+let cont=document.getElementById('listaCortes');
+cont.innerHTML='';
+cortes.forEach((c,i)=>{
+cont.innerHTML+=`
+<div class="card">
+<img src="${c.img}">
+<h3>${c.nombre}</h3>
+<p class="precio">$${c.precio}</p>
+<p>${c.desc}</p>
+<button onclick="abrirModal(${i})">Agendar cita</button>
+</div>`;
+});
+}
+
+function abrirModal(i){
+corteActual=cortes[i];
+document.getElementById('modal').style.display='flex';
+document.getElementById('corteSeleccionado').innerText=corteActual.nombre + ' - $' + corteActual.precio;
+}
+
+function cerrarModal(){
+document.getElementById('modal').style.display='none';
+}
+
+function guardarCita(){
+let cita={
+corte:corteActual.nombre,
+precio:corteActual.precio,
+fecha:document.getElementById('fecha').value,
+hora:document.getElementById('hora').value,
+barbero:document.getElementById('barbero').value
+};
+citas.push(cita);
+localStorage.setItem('citas',JSON.stringify(citas));
+alert('Cita guardada correctamente');
+cerrarModal();
+}
+</script>
+
+</body>
+</html>
